@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<link rel="icon" href="data:,">
+<title>Watch Queue</title>
+<style>
+  :root { color-scheme: dark; --bg:#14161a; --card:#1e2127; --line:#2c3038; --fg:#e6e6e6; --dim:#8b919c; --yt:#ff4e45; --pt:#f96854; --accent:#6aa8ff; }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  body { margin:0; font:15px/1.4 system-ui, sans-serif; background:var(--bg); color:var(--fg); }
+  main { max-width: 860px; margin: 0 auto; padding: 24px 16px 80px; }
+  h1 { font-size: 20px; margin: 0 0 16px; }
+  form { display:flex; gap:8px; }
+  input, #url { background:var(--card); color:var(--fg); border:1px solid var(--line); border-radius:6px; padding:8px 10px; font:inherit; }
+  #url { flex:1; resize:vertical; height:40px; min-height:40px; }
+  #manual { flex-wrap:wrap; } #m-url { width:100%; color:var(--dim); font-size:13px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  #pile { background:var(--card); border:1px dashed var(--line); border-radius:8px; padding:8px; margin-bottom:12px; }
+  #pile header { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+  #pile header b { flex:1; }
+  #pile .tiles { display:flex; gap:8px; overflow-x:auto; padding-bottom:4px; }
+  .tile { position:relative; width:120px; flex:none; font-size:12px; cursor:pointer; border-radius:4px; outline:2px solid transparent; }
+  .tile.current { outline-color:var(--accent); }
+  .tile .fit { width:120px; }
+  .tile span { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; color:var(--dim); margin-top:2px; }
+  .tile button { position:absolute; top:2px; right:2px; padding:0 6px; font-size:12px; background:rgba(0,0,0,.7); }
+  .tile img, .tile span { pointer-events:none; }
+  button { background:var(--card); color:var(--fg); border:1px solid var(--line); border-radius:6px; padding:6px 12px; font:inherit; cursor:pointer; }
+  button:hover { border-color: var(--accent); }
+  #msg { min-height: 1.4em; color: var(--dim); margin: 8px 0; }
+  #msg.err { color: var(--yt); }
+  #timebox { display:grid; grid-template-columns: 64px 140px 1fr; gap:8px; align-items:center; margin-bottom:8px; font-size:13px; }
+  #timebox label { color:var(--dim); font-size:12px; text-transform:uppercase; letter-spacing:.05em; line-height:1.2; }
+  #timebox input { padding:4px 8px; }
+  #fits { color:var(--dim); }
+  #filters { display:grid; grid-template-columns: 64px 1fr; gap:6px 8px; margin-bottom: 12px; align-items:baseline; }
+  #filters .label { color:var(--dim); font-size:12px; text-transform:uppercase; letter-spacing:.05em; }
+  #filters .row { display:flex; flex-wrap:wrap; gap:6px; }
+  .chip { background:#2a2f38; border:1px solid transparent; border-radius:999px; padding:2px 10px; font-size:13px; cursor:pointer; color:var(--fg); }
+  .chip.on { border-color: var(--accent); background:#21344f; }
+  .chip .x { margin-left:4px; color:var(--dim); }
+  ol { list-style:none; margin:0; padding:0; }
+  .item { display:grid; grid-template-columns: 14px 2.5ch 160px minmax(0,1fr) 32px; gap:12px; background:var(--card); border:1px solid var(--line); border-radius:8px; padding:8px; margin:6px 0; align-items:flex-start; }
+  .item.dragging { opacity:.4; }
+  .item.over-top { box-shadow: 0 -3px 0 var(--accent); }
+  .item.over-bottom { box-shadow: 0 3px 0 var(--accent); }
+  .handle { cursor:grab; color:var(--dim); padding:4px 2px; user-select:none; align-self:center; }
+  .num { color:var(--dim); width:2ch; text-align:right; align-self:center; }
+  .thumbwrap { position:relative; display:block; }
+  .dur { position:absolute; right:4px; bottom:4px; background:rgba(0,0,0,.8); color:#fff; font-size:12px; font-weight:600; padding:1px 5px; border-radius:3px; font-variant-numeric: tabular-nums; }
+  .fit { position:relative; display:block; aspect-ratio:16/9; overflow:hidden; border-radius:4px; background:#000; flex:none; }
+  .fit img { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; display:block; }
+  .fit img.blur { object-fit:cover; filter:blur(10px) brightness(.45); transform:scale(1.15); }
+  .thumb { width:160px; }
+  .body { flex:1; min-width:0; }
+  .title { color:var(--fg); font-weight:600; text-decoration:none; display:block; }
+  .title:hover { text-decoration:underline; }
+  .title { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+  .meta { display:grid; grid-template-columns: auto minmax(0,1fr); gap:8px; font-size:13px; margin:4px 0 6px; }
+  .meta button { all:unset; cursor:pointer; color:var(--dim); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .meta button:hover { text-decoration:underline; color:var(--fg); }
+  .meta .src { font-weight:600; color:var(--dim); }
+  .logo { height:16px; width:16px; vertical-align:middle; display:inline-block; }
+  .chip .logo, .meta .src .logo { pointer-events:none; } /* clicks go to the button holding the data */
+  .tags { display:flex; flex-wrap:wrap; gap:4px; align-items:center; }
+  .tags input { padding:2px 8px; font-size:13px; width:110px; border-radius:999px; }
+  .actions { display:flex; flex-direction:column; gap:6px; align-self:center; }
+  .actions button { color:var(--dim); padding:4px 0; }
+  .editform { display:grid; grid-template-columns: 80px 1fr; gap:4px 8px; align-items:center; font-size:13px; }
+  .editform label { color:var(--dim); }
+  .editform input { padding:4px 8px; }
+  .editform div { grid-column: 2; display:flex; gap:6px; }
+  body.placing #list .item { cursor:copy; }
+  body.placing #list .item * { pointer-events:none; } /* clicks land on the card, not its links/buttons */
+  #placing { position:fixed; left:50%; bottom:16px; transform:translateX(-50%); width:min(828px, calc(100% - 32px)); z-index:2; background:#21344f; border:1px solid var(--accent); border-radius:8px; padding:8px 12px; display:flex; gap:12px; align-items:center; box-shadow:0 8px 24px rgba(0,0,0,.5); }
+  #placing .fit { width:96px; }
+  #placing .what { flex:1; min-width:0; }
+  #placing .what .title { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  #placing .hint { color:var(--dim); font-size:13px; }
+  #rules-panel { margin:8px 0; font-size:13px; }
+  #rules-panel summary { cursor:pointer; color:var(--dim); }
+  #rules-panel textarea { width:100%; min-height:110px; background:var(--card); color:var(--fg); border:1px solid var(--line); border-radius:6px; padding:8px; font:13px/1.5 ui-monospace, monospace; margin:6px 0; }
+  #rules-panel p { color:var(--dim); margin:6px 0; }
+  #ask { position:sticky; top:0; z-index:1; background:#21344f; border:1px solid var(--accent); border-radius:8px; padding:10px 12px; margin:8px 0; display:flex; gap:8px; align-items:center; }
+  #ask span { flex:1; }
+  #manual { margin-top:8px; } #manual input { flex:1; }
+  .empty { color:var(--dim); text-align:center; padding:40px 0; }
+  #gate { max-width:520px; margin:18vh auto 0; padding:0 16px; text-align:center; }
+  #gate h1 { font-size:28px; }
+  #gate p { color:#b4bac4; margin:0 0 16px; }
+  #gate-go { background:var(--accent); border-color:var(--accent); color:#0d1420; font-weight:600; padding:10px 20px; }
+  #gate .big { color:var(--fg); font-size:18px; }
+  #savelink { background:#21344f; border:1px solid var(--accent); border-radius:8px; padding:10px 12px; margin-bottom:12px; display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+  #savelink span { flex:1 1 260px; }
+  #link-panel { margin:8px 0; font-size:13px; }
+  #link-panel summary { cursor:pointer; color:var(--dim); }
+  #link-panel p { color:var(--dim); margin:6px 0; }
+  #link-panel .row { display:flex; flex-wrap:wrap; gap:8px; }
+  #mylink { flex:1 1 260px; min-width:0; }
+  @media (max-width: 560px) {
+    .item { grid-template-columns: 2.5ch 104px minmax(0,1fr) 32px; gap:8px; }
+    .handle { display:none; } /* dragging needs a mouse */
+    .thumb { width:104px; }
+    #ask, #placing { flex-wrap:wrap; }
+  }
+</style>
+</head>
+<body>
+<section id="gate" hidden>
+  <h1>Watch Queue</h1>
+  <p class="big" id="gate-text" role="status"></p>
+  <p id="gate-more"></p>
+  <button id="gate-go" hidden></button>
+</section>
+<main hidden>
+  <h1>Watch Queue</h1>
+  <div id="savelink" hidden><span><b>Save your link.</b> It's the only way back to this list on another device, or if this browser forgets it.</span><button data-copylink>Copy link</button><button data-linksaved>I saved it</button></div>
+  <form id="add">
+    <textarea id="url" placeholder="Paste one or more links" title="YouTube, Patreon, anything. Enter adds, Shift+Enter for a new line." aria-label="Links to add" autocomplete="off" spellcheck="false" required></textarea>
+    <button>Add</button>
+  </form>
+  <form id="manual" hidden>
+    <span id="m-url"></span>
+    <input id="m-title" placeholder="Title" required>
+    <input id="m-thumb" type="url" placeholder="Thumbnail image URL" required>
+    <input id="m-dur" placeholder="Duration, e.g. 1:02:30 or 45" title="h:mm:ss, m:ss, or plain minutes" pattern="\d+(:[0-5]\d){0,2}" required>
+    <button>Continue</button>
+    <button type="button" data-manualcancel title="Drop this link">Skip</button>
+  </form>
+  <details id="rules-panel">
+    <summary>Tag rules</summary>
+    <p>One rule per line: <code>Tag = phrase, phrase, …</code>. New items whose title, creator, or link contains a phrase (as whole words) get the tag. In links, dashes and slashes count as spaces, so <code>space show</code> matches <code>…/space-show-s3</code>; a piece of a link like <code>example.com/tv/</code> works too. ALL-CAPS phrases match exact case only; others ignore case. Lines starting with # are ignored.</p>
+    <textarea id="rules" spellcheck="false" placeholder="Space Show = space show, show in space, SP"></textarea>
+    <button data-saverules>Save rules</button> <button data-applyrules title="Add rule tags to every item already in the queue">Apply to existing items</button>
+  </details>
+  <details id="link-panel">
+    <summary>Your link and backups</summary>
+    <p>Anyone with this link can see and change your list, so treat it like a password.</p>
+    <div class="row"><input id="mylink" aria-label="Your link" readonly><button data-copylink>Copy link</button><button data-newlink title="Stop the current link working and make a new one">New link</button></div>
+    <p>A backup is a file holding your whole list.</p>
+    <div class="row"><button data-export>Export</button><button data-import>Import</button><input id="importfile" type="file" accept=".json,application/json" aria-label="Backup file" hidden></div>
+  </details>
+  <div id="msg" role="status"></div>
+  <div id="ask" role="status" hidden></div>
+  <div id="timebox">
+    <label for="maxdur">Time</label>
+    <input id="maxdur" placeholder="I have… 45 or 1:30:00" title="Only show things this long or shorter (plain number = minutes)" autocomplete="off">
+    <span id="fits"></span>
+  </div>
+  <div id="filters"></div>
+  <div id="pile" hidden></div>
+  <div id="placing" hidden></div>
+  <ol id="list"></ol>
+  <datalist id="alltags"></datalist>
+</main>
+<script src="/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,1 @@
+{ "version": "0.0.1", "configurations": [ { "name": "watch-queue", "runtimeExecutable": "node", "runtimeArgs": ["src/server.ts"], "env": { "DB_PATH": "watch-queue.db" }, "port": 4747 } ] }

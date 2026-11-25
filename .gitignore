@@ -1,0 +1,12 @@
+# personal data
+data.json
+pile.json
+*.tmp
+tag-rules.txt
+thumbs/
+# secret
+patreon-session.txt
+# logs
+server.log
+*.db*
+node_modules/
